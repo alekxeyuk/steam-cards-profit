@@ -1,4 +1,5 @@
 import re
+import urllib.parse
 from math import ceil
 from statistics import mean, median
 from typing import List, Optional, Tuple
@@ -27,7 +28,7 @@ class Card:
         self.price = price
 
     def __repr__(self) -> str:
-        return f"{self.name} -> {self.price}"
+        return f"{urllib.parse.unquote(self.name).split('-')[1]} -> {self.price}"
 
 
 class Game:
@@ -52,7 +53,7 @@ class Game:
 
     def update_cards(self) -> None:
         resp = session.get(
-            STEAM_MULTIBUY_URL + "&".join([f"items[]={self.gameid}-{card.name}&qty[]=1" for card in self.cards]),
+            STEAM_MULTIBUY_URL + "&".join([f"items[]={card.name}&qty[]=1" for card in self.cards]),
             cookies={
                 "steamLoginSecure": " "
             },
@@ -77,14 +78,14 @@ class Game:
             "Mean": mean(cards_prices),
             "Median": median(cards_prices),
             "Mean_with_fee": mean(cards_prices_with_fee),
-            "Median_with_fee": median(cards_prices_with_fee)
+            "Median_with_fee": median(cards_prices_with_fee),
         }
 
         for k, v in data.items():
             if (profit := will_get_cards * v) >= self.price:
-                print(colored(f"{k} profit: {profit-self.price}", "green"))
+                print(colored(f"{k} profit: {ceil(profit-self.price)}", "green"))
             else:
-                print(colored(f"{k} loss: {self.price-profit}", "red"))
+                print(colored(f"{k} loss: {ceil(self.price-profit)}", "red"))
 
     def __repr__(self) -> str:
         return f"{self.name} -> {self.price} ^ {self.cards_count}"
@@ -97,7 +98,7 @@ def parse_gameid_cards_info(gameid: int) -> Optional[List[Card]]:
     soup = BeautifulSoup(resp.content, "lxml")
     if (mkr := soup.find("span", id="series-1-cards")) is not None:
         if (prnt := mkr.parent) is not None:
-            return [Card(card.text, 0) for card in prnt.find_all("span", {"class": "element-text"})]
+            return [Card(card.get("href").split("/")[-1], 0) for card in prnt.find_all("a", {"class": "button-blue"})]
     return None
 
 
