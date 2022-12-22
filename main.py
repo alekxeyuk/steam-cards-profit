@@ -11,7 +11,7 @@ from termcolor import colored
 
 init()
 
-regex = re.compile(r"steampowered\.com/app/(\d+)/", re.IGNORECASE)
+regex = re.compile(r"steampowered\.com/app/(\d+)", re.IGNORECASE)
 regex_price = re.compile(r"(\d+),(\d+)")
 
 session = requests.Session()
@@ -69,7 +69,7 @@ class Game:
         for card, price in enumerate(prices):
             self.cards[card].price = int(price[0]) * 100 + int(price[1])
 
-    def calculate(self):
+    def calculate(self) -> None:
         will_get_cards = ceil(self.cards_count / 2)
         cards_prices = [card.price for card in self.cards]
         cards_prices_with_fee = [ceil(price * (0.86364)) for price in cards_prices]
@@ -111,11 +111,13 @@ def parse_gameid_from_url(url: str) -> int:
 def main():
     while (user_input := input("Steam store url to the game: ")) and user_input.lower() not in ("exit", "stop", "q"):
         if (gameid := parse_gameid_from_url(user_input)) != 0:
+            print(gameid)
             game = Game(gameid)
             game.update_self()
             if (cards := parse_gameid_cards_info(gameid)) is not None:
                 game.add_cards(cards)
                 game.update_cards()
+                print(game.cards)
                 game.calculate()
             else:
                 print("Can't get cards info for that gameid")
