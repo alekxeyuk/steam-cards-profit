@@ -3,7 +3,7 @@ import urllib.parse
 from argparse import Namespace
 from math import ceil
 from statistics import mean, median
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Generator
 
 from bs4 import BeautifulSoup
 from cassandra.cqlengine.query import BatchQuery
@@ -98,6 +98,30 @@ def calc_profit():
             print(colored("-" * 20, "yellow"))
 
 
+def chunkify(lst: List[TradingCard], chunk_size: int) -> Generator[List[TradingCard], None, None]:
+    for i in range(0, len(lst), chunk_size):
+        yield lst[i:i + chunk_size]
+
+
+def update_prices():
+    with BatchQuery() as batch:
+        for card_chunk in chunkify(TradingCard.objects.all(), 50):
+            resp = session.get(
+                STEAM_MULTIBUY_URL + "&".join([f"items[]={card.name}&qty[]=1" for card in card_chunk]),
+                cookies={"steamLoginSecure": STEAM_LOGIN_SECURE},
+            )
+            if resp.status_code != 200:
+                return []
+            soup = BeautifulSoup(resp.content, "lxml")
+            prices: List[Tuple[str, str]] = [
+                regex_price.findall(price.get("value"))[0]
+                for price in soup.find_all("input", {"class": "market_dialog_input market_multi_price"})
+            ]
+            print(prices)
+            for price, card in zip(prices, card_chunk):
+                card.batch(batch).update(price=int(price[0]) * 100 + int(price[1]))
+
+
 def Cards(args: Namespace) -> None:
     print(colored("Cards is running...", "green"))
     connect()
@@ -107,7 +131,5 @@ def Cards(args: Namespace) -> None:
         case "profit":
             calc_profit()
         case "update":
-            pass
-            # TODO: update cards prices
-            # update_prices()
+            update_prices()
     print(colored("Cards is done.", "green"))
