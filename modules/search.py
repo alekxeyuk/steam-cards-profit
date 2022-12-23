@@ -8,6 +8,8 @@ from termcolor import colored
 from conf import STEAM_LOGIN_SECURE
 from db import SteamApp, connect
 
+from . import user
+
 
 class Searcher(object):
     BASE_URL = "https://store.steampowered.com/search/results/?"
@@ -39,6 +41,10 @@ class Searcher(object):
         with BatchQuery() as batch:
             for row in soup.select("a.search_result_row"):
                 appid = row.get("data-ds-appid")
+                if not isinstance(appid, str):
+                    appid = 0
+                else:
+                    appid = int(appid)
                 href = row.get("href")
 
                 name = row.select_one("span.title")
@@ -54,7 +60,9 @@ class Searcher(object):
                     price = price.get("data-price-final")
 
                 print(colored(f"Adding {name} {price=}", "cyan"))
-                SteamApp.batch(batch).create(appid=appid, name=name, url=href, price=price, owned=False)
+                SteamApp.batch(batch).create(
+                    appid=appid, name=name, url=href, price=price, owned=user.game_owned(appid)
+                )
 
     def next_page(self) -> None:
         html = self.get_html()
