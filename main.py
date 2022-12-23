@@ -16,7 +16,7 @@ def main() -> None:
     honey_group.add_argument("op", type=str, choices=["get", ])
 
     tail_group = subparsers.add_parser("Cards", help="Cards options", aliases=["cr"])
-    tail_group.add_argument("op", type=str, choices=["get", "profit", ])
+    tail_group.add_argument("op", type=str, choices=["get", "profit", "update"])
 
     args = parser.parse_args()
 

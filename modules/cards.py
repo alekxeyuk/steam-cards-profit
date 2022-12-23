@@ -106,4 +106,8 @@ def Cards(args: Namespace) -> None:
             get_cards()
         case "profit":
             calc_profit()
+        case "update":
+            pass
+            # TODO: update cards prices
+            # update_prices()
     print(colored("Cards is done.", "green"))
