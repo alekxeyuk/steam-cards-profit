@@ -12,6 +12,8 @@ class SteamApp(Model):
     price = columns.BigInt(required=True)
     owned = columns.Boolean(default=False, required=True, index=True)
     cards = columns.List(columns.Text)
+    mean_with_fee = columns.BigInt()
+    median_with_fee = columns.BigInt()
     created_at = columns.DateTime(default=datetime.now)
 
     def __str__(self):
