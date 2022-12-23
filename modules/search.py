@@ -70,11 +70,13 @@ class Searcher(object):
             print(colored("next_page failed with bad html...", "red"))
             return
         self.parse_html(html)
+        self.start += self.count
 
 
 def steam_search() -> None:
     s = Searcher()
-    s.next_page()
+    for _ in range(5):
+        s.next_page()
 
 
 def Search(args: Namespace) -> None:
