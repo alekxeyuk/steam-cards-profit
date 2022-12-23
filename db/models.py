@@ -10,8 +10,8 @@ class SteamApp(Model):
     name = columns.Text(required=True)
     url = columns.Text(required=True)
     price = columns.BigInt(required=True)
-    owned = columns.Boolean(default=False, required=True)
-    cards = columns.List(columns.BigInt)
+    owned = columns.Boolean(default=False, required=True, index=True)
+    cards = columns.List(columns.Text)
     created_at = columns.DateTime(default=datetime.now)
 
     def __str__(self):
@@ -20,10 +20,9 @@ class SteamApp(Model):
 
 class TradingCard(Model):
     __keyspace__ = "main"
-    id = columns.BigInt(primary_key=True, required=True)
-    name = columns.Text(required=True)
+    name = columns.Text(primary_key=True, required=True)
     price = columns.BigInt(required=True)
-    appid = columns.BigInt(required=True)
+    appid = columns.BigInt(required=True, index=True)
     created_at = columns.DateTime(default=datetime.now)
 
     def __str__(self):
