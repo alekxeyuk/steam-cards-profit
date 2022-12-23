@@ -9,6 +9,9 @@ colorama = "*"
 termcolor = "*"
 beautifulsoup4 = "*"
 lxml = "*"
+cassandra-driver = "*"
+lz4 = "*"
+requests-toolbelt = "*"
 
 [dev-packages]
 flake8 = "*"
