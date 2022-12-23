@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 db/secure-connect-base.zip
 conf/
+conf/__init__.py
