@@ -75,25 +75,27 @@ def update_cards(cards: List[str]) -> List[Tuple[str, int]]:
 
 def calc_profit():
     print(colored("-" * 20, "yellow"))
-    for app in SteamApp.objects.filter(owned=False):
-        print(colored(app, "cyan"))
-        will_get_cards = ceil(len(app.cards) / 2)
-        cards_prices = [card.price for card in TradingCard.objects.filter(appid=app.appid)]
-        cards_prices_with_fee = [ceil(price * (0.86364)) for price in cards_prices]
-        print(cards_prices)
-        data = {
-            "Mean": mean(cards_prices),
-            "Median": median(cards_prices),
-            "Mean_with_fee": mean(cards_prices_with_fee),
-            "Median_with_fee": median(cards_prices_with_fee),
-        }
+    with BatchQuery() as batch:
+        for app in SteamApp.objects.filter(owned=False):
+            print(colored(app, "cyan"))
+            will_get_cards = ceil(len(app.cards) / 2)
+            cards_prices = [ceil(card.price * (0.86364)) for card in TradingCard.objects.filter(appid=app.appid)]
+            print(cards_prices)
+            data: dict[str, float] = {
+                "mean_with_fee": will_get_cards * mean(cards_prices),
+                "median_with_fee": will_get_cards * median(cards_prices),
+            }
 
-        for k, v in data.items():
-            if (profit := will_get_cards * v) >= app.price:
-                print(colored(f"{k} profit: {ceil(profit-app.price)}", "green"))
-            else:
-                print(colored(f"{k} loss: {ceil(app.price-profit)}", "red"))
-        print(colored("-" * 20, "yellow"))
+            for k, profit in data.items():
+                if profit >= app.price:
+                    print(colored(f"{k} profit: {ceil(profit-app.price)}", "green"))
+                    data[k] = ceil(profit - app.price)
+                else:
+                    print(colored(f"{k} loss: {ceil(app.price-profit)}", "red"))
+                    data[k] = -ceil(app.price - profit)
+
+            app.batch(batch).update(**data)
+            print(colored("-" * 20, "yellow"))
 
 
 def Cards(args: Namespace) -> None:
