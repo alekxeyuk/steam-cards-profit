@@ -32,17 +32,18 @@ class Card:
 def get_cards() -> None:
     with BatchQuery() as batch:
         for app in SteamApp.objects.filter(owned=False):
-            print(colored(app, "cyan"))
-            if (cards := parse_gameid_cards_info(app.appid)) is not None:
-                print(cards)
-                for card in update_cards(cards):
-                    TradingCard.batch(batch).create(
-                        name=card[0],
-                        price=card[1],
-                        appid=app.appid,
-                    )
-                app.batch(batch).cards = cards
-                app.batch(batch).save()
+            if len(app.cards) == 0:
+                print(colored(app, "cyan"))
+                if (cards := parse_gameid_cards_info(app.appid)) is not None:
+                    print(cards)
+                    for card in update_cards(cards):
+                        TradingCard.batch(batch).create(
+                            name=card[0],
+                            price=card[1],
+                            appid=app.appid,
+                        )
+                    app.batch(batch).cards = cards
+                    app.batch(batch).save()
 
 
 def parse_gameid_cards_info(gameid: int) -> Optional[List[str]]:
