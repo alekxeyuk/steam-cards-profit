@@ -32,10 +32,11 @@ def main():
                 pprint(TradingCard.objects.all()[:])
             case "nuke":
                 print(colored("Nuking DB", "red"))
-                for inst in SteamApp.objects.all():
-                    inst.delete()
-                for inst in TradingCard.objects.all():
-                    inst.delete()
+                with BatchQuery() as batch:
+                    for inst in SteamApp.objects.all():
+                        inst.batch(batch).delete()
+                    for inst in TradingCard.objects.all():
+                        inst.batch(batch).delete()
                 print(colored("DB nuked", "red"))
             case "exit":
                 print(colored("Bye", "green"))
