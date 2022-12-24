@@ -85,4 +85,6 @@ def Search(args: Namespace) -> None:
     match args.op:
         case "get":
             steam_search()
+        case "user":
+            user.update_owned()
     print(colored("Search is done.", "green"))
