@@ -6,7 +6,7 @@ from requests_toolbelt import sessions
 from termcolor import colored
 
 from conf import STEAM_LOGIN_SECURE
-from db import SteamApp, connect
+from db import SteamApp, TradingCard, connect
 
 from . import user
 
@@ -44,7 +44,7 @@ class Searcher(object):
                 if not isinstance(appid, str):
                     appid = 0
                 else:
-                    appid = int(appid)
+                    appid = int(appid.split(',')[0])
                 href = row.get("href")
 
                 name = row.select_one("span.title")
@@ -79,6 +79,16 @@ def steam_search() -> None:
         s.next_page()
 
 
+def games_cleanup() -> None:
+    with BatchQuery() as batch:
+        for app in SteamApp.objects.filter(owned=False, median_with_fee__lte=-10).allow_filtering():
+            print(colored(f"Game yonked {app.name}", "red"))
+            for card in TradingCard.objects.filter(name__in=app.cards):
+                print(colored(f"Card removed {card.name}", "cyan"))
+                card.batch(batch).delete()
+            app.batch(batch).delete()
+
+
 def Search(args: Namespace) -> None:
     print(colored("Search is running...", "green"))
     connect()
@@ -87,4 +97,6 @@ def Search(args: Namespace) -> None:
             steam_search()
         case "user":
             user.update_owned()
+        case "clean":
+            games_cleanup()
     print(colored("Search is done.", "green"))

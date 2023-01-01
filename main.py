@@ -2,8 +2,8 @@ import argparse
 
 from colorama import init
 
-from modules.search import Search
 from modules.cards import Cards
+from modules.search import Search
 
 init()
 
@@ -13,7 +13,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(help="targets choices", dest="command", required=True)
 
     honey_group = subparsers.add_parser("Search", help="Search options", aliases=["sr"])
-    honey_group.add_argument("op", type=str, choices=["get", "user", ])
+    honey_group.add_argument("op", type=str, choices=["get", "user", "clean", ])
 
     tail_group = subparsers.add_parser("Cards", help="Cards options", aliases=["cr"])
     tail_group.add_argument("op", type=str, choices=["get", "profit", "update"])
