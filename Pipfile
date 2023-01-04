@@ -12,6 +12,8 @@ lxml = "*"
 cassandra-driver = "*"
 lz4 = "*"
 requests-toolbelt = "*"
+lowbar = "*"
+tenacity = "*"
 
 [dev-packages]
 flake8 = "*"
