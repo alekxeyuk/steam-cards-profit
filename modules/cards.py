@@ -68,19 +68,20 @@ def parse_gameid_cards_info(gameid: int) -> Optional[List[str]]:
     return None
 
 
+@retry(wait=wait_fixed(2), stop=stop_after_attempt(5), before=before_log(logger, logging.ERROR))
 def update_cards(cards: List[str]) -> List[Tuple[str, int]]:
     resp = session.get(
         STEAM_MULTIBUY_URL + "&".join([f"items[]={card}&qty[]=1" for card in cards]),
         cookies={"steamLoginSecure": STEAM_LOGIN_SECURE},
     )
-    if resp.status_code != 200:
-        return []
     soup = BeautifulSoup(resp.content, "lxml")
     prices: List[Tuple[str, str]] = [
         regex_price.findall(price.get("value"))[0]
         for price in soup.find_all("input", {"class": "market_dialog_input market_multi_price"})
     ]
     print(prices)
+    if len(prices) == 0:
+        raise Exception
     return [(card, int(price[0]) * 100 + int(price[1])) for price, card in zip(prices, cards)]
 
 
