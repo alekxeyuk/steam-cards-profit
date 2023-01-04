@@ -1,13 +1,19 @@
+import logging
 import re
+import sys
 import urllib.parse
 from argparse import Namespace
 from math import ceil
 from statistics import mean, median
-from typing import List, Optional, Tuple, Generator
+from typing import Generator, List, Optional, Tuple
 
 from bs4 import BeautifulSoup
 from cassandra.cqlengine.query import BatchQuery
 from requests import Session
+from tenacity import retry
+from tenacity.before import before_log
+from tenacity.stop import stop_after_attempt
+from tenacity.wait import wait_fixed
 from termcolor import colored
 
 from conf import STEAM_LOGIN_SECURE
@@ -18,6 +24,10 @@ STEAM_MULTIBUY_URL = "https://steamcommunity.com/market/multibuy?appid=753&"
 regex_price = re.compile(r"(\d+),(\d+)")
 
 session = Session()
+
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 class Card:
@@ -82,6 +92,8 @@ def calc_profit():
             will_get_cards = ceil(len(app.cards) / 2)
             cards_prices = [ceil(card.price * (0.86364)) for card in TradingCard.objects.filter(appid=app.appid)]
             print(cards_prices)
+            if len(cards_prices) == 0:
+                continue
             data: dict[str, float] = {
                 "mean_with_fee": will_get_cards * mean(cards_prices),
                 "median_with_fee": will_get_cards * median(cards_prices),
@@ -104,20 +116,26 @@ def chunkify(lst: List[TradingCard], chunk_size: int) -> Generator[List[TradingC
         yield lst[i:i + chunk_size]
 
 
+@retry(wait=wait_fixed(2), stop=stop_after_attempt(5), before=before_log(logger, logging.ERROR))
+def get_prices(card_chunk: List[TradingCard]) -> List[Tuple[str, str]]:
+    resp = session.get(
+        STEAM_MULTIBUY_URL + "&".join([f"items[]={card.name}&qty[]=1" for card in card_chunk]),
+        cookies={"steamLoginSecure": STEAM_LOGIN_SECURE},
+    )
+    soup = BeautifulSoup(resp.content, "lxml")
+    prices: List[Tuple[str, str]] = [
+        regex_price.findall(price.get("value"))[0]
+        for price in soup.find_all("input", {"class": "market_dialog_input market_multi_price"})
+    ]
+    if len(prices) == 0:
+        raise Exception
+    return prices
+
+
 def update_prices():
     with BatchQuery() as batch:
         for card_chunk in chunkify(TradingCard.objects.all(), 50):
-            resp = session.get(
-                STEAM_MULTIBUY_URL + "&".join([f"items[]={card.name}&qty[]=1" for card in card_chunk]),
-                cookies={"steamLoginSecure": STEAM_LOGIN_SECURE},
-            )
-            if resp.status_code != 200:
-                return []
-            soup = BeautifulSoup(resp.content, "lxml")
-            prices: List[Tuple[str, str]] = [
-                regex_price.findall(price.get("value"))[0]
-                for price in soup.find_all("input", {"class": "market_dialog_input market_multi_price"})
-            ]
+            prices = get_prices(card_chunk)
             print(prices)
             for price, card in zip(prices, card_chunk):
                 card.batch(batch).update(price=int(price[0]) * 100 + int(price[1]))
