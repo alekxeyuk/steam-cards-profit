@@ -5,7 +5,7 @@ import urllib.parse
 from argparse import Namespace
 from math import ceil
 from statistics import mean, median
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple, Any
 
 from bs4 import BeautifulSoup
 from cassandra.cqlengine.query import BatchQuery
@@ -46,14 +46,17 @@ def get_cards() -> None:
                 print(colored(app, "cyan"))
                 if (cards := parse_gameid_cards_info(app.appid)) is not None:
                     print(cards)
-                    for card in update_cards(cards):
-                        TradingCard.batch(batch).create(
-                            name=card[0],
-                            price=card[1],
-                            appid=app.appid,
-                        )
-                    app.batch(batch).cards = cards
-                    app.batch(batch).save()
+                    try:
+                        for card in update_cards(cards):
+                            TradingCard.batch(batch).create(
+                                name=card[0],
+                                price=card[1],
+                                appid=app.appid,
+                            )
+                        app.batch(batch).cards = cards
+                        app.batch(batch).save()
+                    except Exception:
+                        print(colored(f"BAD GAME: {app}", "red"))
 
 
 def parse_gameid_cards_info(gameid: int) -> Optional[List[str]]:
@@ -68,7 +71,7 @@ def parse_gameid_cards_info(gameid: int) -> Optional[List[str]]:
     return None
 
 
-@retry(wait=wait_fixed(2), stop=stop_after_attempt(5), before=before_log(logger, logging.ERROR))
+@retry(wait=wait_fixed(5), stop=stop_after_attempt(5), before=before_log(logger, logging.ERROR))
 def update_cards(cards: List[str]) -> List[Tuple[str, int]]:
     resp = session.get(
         STEAM_MULTIBUY_URL + "&".join([f"items[]={card}&qty[]=1" for card in cards]),
@@ -112,7 +115,7 @@ def calc_profit():
             print(colored("-" * 20, "yellow"))
 
 
-def chunkify(lst: List[TradingCard], chunk_size: int) -> Generator[List[TradingCard], None, None]:
+def chunkify(lst: List[Any], chunk_size: int) -> Generator[List[Any], None, None]:
     for i in range(0, len(lst), chunk_size):
         yield lst[i:i + chunk_size]
 
