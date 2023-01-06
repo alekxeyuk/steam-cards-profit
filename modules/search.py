@@ -1,7 +1,10 @@
+import time
 from argparse import Namespace
+from typing import Any, Dict, List
 
 from bs4 import BeautifulSoup
 from cassandra.cqlengine.query import BatchQuery
+from requests import Session
 from requests_toolbelt import sessions
 from termcolor import colored
 
@@ -9,6 +12,7 @@ from conf import STEAM_LOGIN_SECURE
 from db import SteamApp, TradingCard, connect
 
 from . import user
+from .cards import chunkify
 
 
 class Searcher(object):
@@ -44,7 +48,7 @@ class Searcher(object):
                 if not isinstance(appid, str):
                     appid = 0
                 else:
-                    appid = int(appid.split(',')[0])
+                    appid = int(appid.split(",")[0])
                 href = row.get("href")
 
                 name = row.select_one("span.title")
@@ -77,6 +81,7 @@ def steam_search() -> None:
     s = Searcher()
     for _ in range(5):
         s.next_page()
+        time.sleep(2)
 
 
 def games_cleanup() -> None:
@@ -89,6 +94,29 @@ def games_cleanup() -> None:
             app.batch(batch).delete()
 
 
+def get_prices(games: List[SteamApp], s: Session) -> Dict[str, Any]:
+    resp = s.get(
+        "https://store.steampowered.com/api/appdetails?filters=price_overview&cc=TR&appids="
+        + ",".join(map(lambda x: str(x.appid), games))
+    )
+    return resp.json()
+
+
+def games_update() -> None:
+    s = Session()
+    with BatchQuery() as batch:
+        for games_chunk in chunkify(SteamApp.objects.filter(owned=False), 50):
+            prices = get_prices(games_chunk, s)
+            for game in games_chunk:
+                old_price: int = game.price
+                new_price: int = prices[str(game.appid)]["data"]["price_overview"]["final"]
+                dif_price: int = abs(new_price - old_price)
+                if new_price != old_price:
+                    print(colored(f"{game.name} -> {old_price} to {new_price} = ", "cyan"), end="")
+                    print(colored(str(dif_price), "red" if new_price > old_price else "green"))
+                    game.batch(batch).update(price=new_price)
+
+
 def Search(args: Namespace) -> None:
     print(colored("Search is running...", "green"))
     connect()
@@ -99,4 +127,6 @@ def Search(args: Namespace) -> None:
             user.update_owned()
         case "clean":
             games_cleanup()
+        case "update":
+            games_update()
     print(colored("Search is done.", "green"))
