@@ -23,7 +23,7 @@ class SteamApp(Model):
 class TradingCard(Model):
     __keyspace__ = "main"
     name = columns.Text(primary_key=True, required=True)
-    price = columns.BigInt(required=True)
+    price = columns.BigInt(required=True, index=True)
     appid = columns.BigInt(required=True, index=True)
     created_at = columns.DateTime(default=datetime.now)
 

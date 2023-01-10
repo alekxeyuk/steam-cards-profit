@@ -5,7 +5,7 @@ import urllib.parse
 from argparse import Namespace
 from math import ceil
 from statistics import mean, median
-from typing import Generator, List, Optional, Tuple, Any
+from typing import Any, Generator, List, Optional, Tuple
 
 from bs4 import BeautifulSoup
 from cassandra.cqlengine.query import BatchQuery
@@ -41,18 +41,18 @@ class Card:
 
 def get_cards() -> None:
     with BatchQuery() as batch:
-        for app in SteamApp.objects.filter(owned=False):
-            if len(app.cards) == 0:
+    for app in SteamApp.objects.filter(owned=False):
+        if len(app.cards) == 0:
                 print(colored(app, "cyan"))
-                if (cards := parse_gameid_cards_info(app.appid)) is not None:
+            if (cards := parse_gameid_cards_info(app.appid)) is not None:
                     print(cards)
                     try:
                         for card in update_cards(cards):
                             TradingCard.batch(batch).create(
                                 name=card[0],
                                 price=card[1],
-                                appid=app.appid,
-                            )
+                        appid=app.appid,
+                    )
                         app.batch(batch).cards = cards
                         app.batch(batch).save()
                     except Exception:
@@ -145,6 +145,10 @@ def update_prices():
                 card.batch(batch).update(price=int(price[0]) * 100 + int(price[1]))
 
 
+def count_cards():
+    print(TradingCard.objects.filter(price=-1).count())
+
+
 def Cards(args: Namespace) -> None:
     print(colored("Cards is running...", "green"))
     connect()
@@ -155,4 +159,6 @@ def Cards(args: Namespace) -> None:
             calc_profit()
         case "update":
             update_prices()
+        case "count":
+            count_cards()
     print(colored("Cards is done.", "green"))
