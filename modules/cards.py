@@ -41,22 +41,22 @@ class Card:
 
 def get_cards() -> None:
     with BatchQuery() as batch:
-    for app in SteamApp.objects.filter(owned=False):
-        if len(app.cards) == 0:
+        for app in SteamApp.objects.filter(owned=False):
+            if len(app.cards) == 0:
                 print(colored(app, "cyan"))
             if (cards := parse_gameid_cards_info(app.appid)) is not None:
-                    print(cards)
-                    try:
-                        for card in update_cards(cards):
-                            TradingCard.batch(batch).create(
-                                name=card[0],
-                                price=card[1],
-                        appid=app.appid,
-                    )
-                        app.batch(batch).cards = cards
-                        app.batch(batch).save()
-                    except Exception:
-                        print(colored(f"BAD GAME: {app}", "red"))
+                print(cards)
+                try:
+                    for card in update_cards(cards):
+                        TradingCard.batch(batch).create(
+                            name=card[0],
+                            price=card[1],
+                            appid=app.appid,
+                        )
+                    app.batch(batch).cards = cards
+                    app.batch(batch).save()
+                except Exception:
+                    print(colored(f"BAD GAME: {app}", "red"))
 
 
 def parse_gameid_cards_info(gameid: int) -> Optional[List[str]]:
@@ -117,7 +117,7 @@ def calc_profit():
 
 def chunkify(lst: List[Any], chunk_size: int) -> Generator[List[Any], None, None]:
     for i in range(0, len(lst), chunk_size):
-        yield lst[i:i + chunk_size]
+        yield lst[i : i + chunk_size]
 
 
 @retry(wait=wait_fixed(2), stop=stop_after_attempt(5), before=before_log(logger, logging.ERROR))
